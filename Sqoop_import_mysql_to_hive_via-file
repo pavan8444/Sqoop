@@ -1,0 +1,150 @@
+
+
+Importing of Data from Mysql to Hive:
+
+	When we importing bulk of tables.. It can takes the following steps :
+1. Check the Files whether they're with Unique Key or Not.
+
+2. CReating 3 files initially :
+
+		1. Create hive tables from the hadoop itself without entering into Hive we can create tables. This file ends with (.hql) format.
+		2. Help for sqooping or for inserting of data to the created tables in hive. The file is in (.sh) format.
+		3. It is for the tables without having a UNIQUEKey.This files are also in (.sh) format.
+			Tables without Unique must need to create a num column and move data to another mysql table. Later we can use that New table for Sqoop importing of Data.. 
+
+EXAMPLE:
+   
+ * TABLE WITHOUT A UNIQUE-KEY:
+		* currency_rate :
+			
+		> create table if not exists currency_rate (CurrencyKey int, DateKey int, AverageRate double, EndOfDayRate double, DATE11 timestamp);
+
+	-------------+----------+-------------+-------------------+---------------------+
+| CurrencyKey | DateKey  | AverageRate | EndOfDayRate      | DATE                |
++-------------+----------+-------------+-------------------+---------------------+
+|           3 | 20050701 |           1 | 0.999800039992002 | 2005-07-01 00:00:00 |
+|           3 | 20050702 |           1 |  1.00090081072966 | 2005-07-02 00:00:00 |
+|           3 | 20050703 |           1 | 0.999600159936026 | 2005-07-03 00:00:00 |
+|           3 | 20050704 |           1 |                 1 | 2005-07-04 00:00:00 |
+|           3 | 20050705 |           1 | 0.999600159936026 | 2005-07-05 00:00:00 |
+|           3 | 20050706 |           1 |  1.00050025012506 | 2005-07-06 00:00:00 |
+|           3 | 20050707 |           1 | 0.999500249875062 | 2005-07-07 00:00:00 |
+|           3 | 20050708 |           1 |    1.000200040008 | 2005-07-08 00:00:00 |
+|           3 | 20050709 |           1 | 0.999200639488409 | 2005-07-09 00:00:00 |
+|           3 | 20050710 |           1 |    1.000200040008 | 2005-07-10 00:00:00 |
++-------------+----------+-------------+-------------------+---------------------+
+
+*  Now we created a num-Mapper of Unique Key As below:
+		* currency_rate1 :
+		>  create table if not exists currency_rate (num int,CurrencyKey int, DateKey int, AverageRate double, EndOfDayRate double, DATE11 timestamp);
+		
+ 		> create table currency_rate1 as SELECT (@row_number:=@row_number + 1) AS num, SalesOrderNumber, SalesOrderLineNumber, SalesReasonKey FROM  currency_rate, (SELECT @row_number:=0) AS t;
+
+		> ALTER TABLE currency_rate1 MODIFY num int;
+
+
++------+-------------+----------+-------------+-------------------+---------------------+
+| num  | CurrencyKey | DateKey  | AverageRate | EndOfDayRate      | DATE                |
++------+-------------+----------+-------------+-------------------+---------------------+
+|    1 |           3 | 20050701 |           1 | 0.999800039992002 | 2005-07-01 00:00:00 |
+|    2 |           3 | 20050702 |           1 |  1.00090081072966 | 2005-07-02 00:00:00 |
+|    3 |           3 | 20050703 |           1 | 0.999600159936026 | 2005-07-03 00:00:00 |
+|    4 |           3 | 20050704 |           1 |                 1 | 2005-07-04 00:00:00 |
+|    5 |           3 | 20050705 |           1 | 0.999600159936026 | 2005-07-05 00:00:00 |
+|    6 |           3 | 20050706 |           1 |  1.00050025012506 | 2005-07-06 00:00:00 |
+|    7 |           3 | 20050707 |           1 | 0.999500249875062 | 2005-07-07 00:00:00 |
+|    8 |           3 | 20050708 |           1 |    1.000200040008 | 2005-07-08 00:00:00 |
+|    9 |           3 | 20050709 |           1 | 0.999200639488409 | 2005-07-09 00:00:00 |
+|   10 |           3 | 20050710 |           1 |    1.000200040008 | 2005-07-10 00:00:00 |
++------+-------------+----------+-------------+-------------------+---------------------+
+
+
+3. Create Database name in Hive 
+
+
+4.Check the tables in Hive whether the data loaded or not.. 
+
+
+
+
+Steps To DO Importing of data From Mysql to Hive:
+
+a) Create a file (hive_tables.hql) like below : 
+
+	Example: 
+
+use adventureworks; (THE HIVE-DATABASE WHERE YOU NEED TO PULL DATA)
+
+create table if not exists call_center (FactCallCenterID int,DateKey int, WageType string, Shift string, LevelOneOperators int, LevelTwoOperators int, TotalOperators int, Calls int, AutomaticResponses int, Orders int, IssuesRaised int, AverageTimePerIssue int, ServiceGrade double, DATE1 timestamp); (TABLE WITH UNIQUE-Key)
+
+create table if not exists currency_rate (num int,CurrencyKey int, DateKey int, AverageRate double, EndOfDayRate double, DATE11 timestamp);(TABLE WITHOUT UNIQUE-Key)
+
+b) Push on hadoop@localhost and press ENTER:
+
+ 	Example:  hadoop@localhost~: hive -f hive_tables.hql 
+
+c) Create a (mysql_to_hive-import.sh) file of sqoop commands of all tables with UNIQUE KEY:
+
+	Example:
+sqoop-import --connect jdbc:mysql://localhost:3306/adventureworks  --username root --password root --table call_center --hive-import  --hive-database adventureworks --hive-table  call_center -m 1
+
+
+d) Put on hadoop@localhost and press ENTER
+	Example:
+		hadoop@localhost~: sh ./mysql_to_hive-import.sh
+
+e) Create a (mysql_to_hive_key.sh) file of tables without UNIQUE-Key :
+
+	Example:
+
+sqoop-import --connect jdbc:mysql://localhost:3306/adventureworks  --username root --password root --table currency_rate1 --hive-import  --hive-database adventureworks --hive-table  currency_rate -m 1
+
+	Mysql Data withOut UNIQUE-Keys:
+
+	* create table internet_sales_reason1 as SELECT (@row_number:=@row_number + 1) AS num, SalesOrderNumber, SalesOrderLineNumber, SalesReasonKey FROM  internet_sales_reason, (SELECT @row_number:=0) AS t;
+
+
+
+	* create table intl_product_description1 as SELECT (@row_number:=@row_number + 1) AS num, ProductKey, CultureName, ProductDescription FROM  intl_product_description, (SELECT @row_number:=0) AS t;
+
+
+
+	* create table product_inventory1 as SELECT (@row_number:=@row_number + 1) AS num, ProductKey, DateKey, MovementDate, UnitCost, UnitsIn, UnitsOut, UnitsBalance FROM  product_inventory, (SELECT @row_number:=0) AS t;
+
+
+	* create table reseller_sales1 as SELECT (@row_number:=@row_number + 1) AS num, ProductKey, OrderDateKey, DueDateKey, ShipDateKey, ResellerKey, EmployeeKey, PromotionKey, CurrencyKey, SalesTerritoryKey, SalesOrderNumber, SalesOrderLineNumber, RevisionNumber, OrderQuantity, UnitPrice, ExtendedAmount, UnitPriceDiscountPct, DiscountAmount, ProductStandardCost, TotalProductCost, SalesAmount, TaxAmt, Freight, CarrierTrackingNumber, CustomerPONumber, OrderDate, DueDate, ShipDate FROM  reseller_sales,(SELECT @row_number:=0) AS t;         
+
+
+
+f) Put on Hadoop@localhost and press ENTER :
+
+	Example: 
+		Hadoop@localhost~: sh./mysql_to_hive_key.sh
+
+
+g) LOADING OF DATA IS COMPLETED.. NOW CHECK THE CREATED HIVE_TABLES Whether the data is inserted or not.
+
+
+ IMPORTANT NOTE: 
+
+1> Infact we don't need to create a file for creating hive tables . Once we insert (.sh) file it automatically creates the tables in HIVE and Load the DATA in a single SHOT. But for the clear Step to step process we follow this. 
+
+
+2> For images we need to use the following command :
+
+		* sqoop-import --connect jdbc:mysql://localhost:3306/adventureworks  --username root --password root --table dim_employee --hive-import  --hive-database adventureworks --hive-table  dim_employee --map-column-hive EmployeePhoto=string -m 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
