@@ -1,0 +1,73 @@
+
+1> Dumping a (adventure_works_dw.sql) file to get load of all tables in MYSQL:
+
+	 hadoop@localhost:~source adventure_works_dw.sql
+
+
+2> SQOOPING of a DATABASE FROM MySql To HDFS & HBASE:
+
+	* MySql TO HDFS :
+	
+	* MYSQL TO HBASE :
+	
+		1. Creating Table
+		2. Creating a script file with sqooping data
+		3. Importing data from MYSQL to that table
+		4. Checking the data in the tables in which we load the data in Hbase  
+		
+
+	
+* MYSQL TO HDFS: 
+
+	IMPORT-ALL TABLES  USING AUTO RESET WITH ONE MAPPER:
+
+sqoop import-all-tables --connect jdbc:mysql://localhost:3306/adventureworks --username root --password root --autoreset-to-one-mapper --warehouse-dir /user/hive/warehouse/adventureworks.db -m 1
+
+
+* MYSQL TO HBASE:
+	
+ 
+	For bulk of tables:
+		
+	1) we need to create new tables (10 or more ) then we need to add the syntaxes in a sigle file (.csv or .txt or .sh or any format file) 
+ I created a file of tables 
+		- create.sh (text file)
+
+	
+	2) Creating a script file in format (.sh) include with Sqoop-import commands:
+
+		INSERT SQOOP commands of all tables in a single textfile or .csv file or .sh file like 
+
+			My file is: adventureworks.sh
+	
+	c) Now I'm inserting this file like below in a localhost command (anywhere in hadoop terminal without entering into hbase)
+
+		Example:  
+			 hadoop@localhost:~/Documents$ sh adventureworks.sh
+
+	d) Now your data is imported to the hbase you can check now.
+
+ 
+IN HBASE -: hbase(main):014:0> count 'dim_employee'
+ 
+ IN MYSQL -: 
+		mysql> select count(1) from dim_employee;
+		+----------+
+		| count(1) |
+		+----------+
+		|      296 |
+		+----------+
+		1 row in set (0.00 sec)
+
+
+
+
+
+
+
+
+
+
+
+
+
